@@ -5,6 +5,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ShanuFit">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F6F1">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141813">
 <style>
@@ -1432,4 +1435,10 @@ buildWeeklyInputs();
 renderToday();
 renderReports();
 markTrainToday();
+
+/* Offline support. Only over http(s) — opening the file directly has no
+   service worker, which is fine, it just means no offline caching. */
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
 </script>
