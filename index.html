@@ -5,6 +5,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ShanuFit">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F6F1">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141813">
 <style>
@@ -127,7 +130,7 @@ nav.tabs{
   background:var(--surface); border-top:1px solid var(--line);
   padding:6px max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-bottom));
 }
-nav.tabs .inner{max-width:520px; margin:0 auto; display:grid; grid-template-columns:repeat(5,1fr)}
+nav.tabs .inner{max-width:520px; margin:0 auto; display:grid; grid-template-columns:repeat(6,1fr)}
 nav.tabs button{
   border:none; background:none; color:var(--ink3); font:inherit; font-size:11px; font-weight:600;
   display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 0; cursor:pointer;
@@ -199,6 +202,37 @@ table.hist tr:last-child td{border-bottom:none}
   font-variant-numeric:tabular-nums; border-top:1px dashed var(--line); margin-top:8px; padding-top:8px;
 }
 .faq li{margin:6px 0 6px 18px; font-size:14px; color:var(--ink2)}
+.card.is-today{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), var(--shadow)}
+.today-badge{
+  font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--accent); background:var(--accent-soft); border-radius:999px; padding:3px 9px; margin-left:8px;
+}
+.ex-row{padding:11px 0; border-bottom:1px solid var(--line)}
+.ex-row:last-child{border-bottom:none}
+.ex-top{display:flex; justify-content:space-between; gap:10px; align-items:baseline}
+.ex-name{font-size:14.5px; font-weight:700}
+.ex-presc{font-size:12.5px; color:var(--ink2); margin-top:2px}
+.ex-link{font-size:12px; font-weight:700; color:var(--accent); text-decoration:none; white-space:nowrap}
+.sets{display:flex; gap:6px; margin-top:9px; align-items:center; flex-wrap:wrap}
+.set-btn{
+  min-width:44px; height:38px; border-radius:9px; border:1px solid var(--line);
+  background:var(--surface); color:var(--ink2); font:inherit; font-size:13px; font-weight:700;
+  cursor:pointer; touch-action:manipulation;
+}
+.set-btn.on{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.sets .done-n{font-size:12px; color:var(--ink3); font-weight:600; margin-left:2px}
+.ex-note-in{margin-top:8px; font-size:14px; min-height:40px; padding:8px 10px}
+.wo-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.wo-prog{font-size:12.5px; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums}
+/* 28 days as 4 rows of 7: each row is one week of the cycle, each column the same cycle day */
+.dots{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-top:10px; max-width:300px}
+.dot{aspect-ratio:1; border-radius:7px; background:var(--surface2); border:1px solid var(--line)}
+.dot.done{background:var(--accent); border-color:var(--accent)}
+.dot.rest{background:var(--accent-soft); border-color:var(--accent-soft)}
+.dot.miss{background:var(--bad-soft); border-color:var(--bad-soft)}
+.legend{display:flex; gap:12px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--ink3)}
+.legend span{display:flex; align-items:center; gap:5px}
+.legend i{width:12px; height:12px; border-radius:4px; display:inline-block}
 .delta-up{color:var(--bad); font-weight:700}
 .delta-down{color:var(--good); font-weight:700}
 </style>
@@ -227,12 +261,17 @@ table.hist tr:last-child td{border-bottom:none}
     </div>
 
     <div class="card">
-      <h3>Workout</h3>
+      <div class="wo-head">
+        <h3 id="woTitle">Workout</h3>
+        <span class="wo-prog" id="woProg"></span>
+      </div>
+      <p class="sub" id="woSub"></p>
       <div class="chips" id="workoutChips">
         <button class="chip" data-v="Completed">✔ Completed</button>
         <button class="chip" data-v="Not completed">✘ Not completed</button>
         <button class="chip" data-v="Rest day">Rest day</button>
       </div>
+      <div id="woSession"></div>
     </div>
 
     <div id="mealCards"></div>
@@ -252,8 +291,8 @@ table.hist tr:last-child td{border-bottom:none}
           <input type="number" id="inSleep" min="0" max="16" step="0.5" inputmode="decimal" placeholder="e.g. 7">
         </div>
         <div>
-          <label class="f">Steps</label>
-          <input type="number" id="inSteps" min="0" step="100" inputmode="numeric" placeholder="e.g. 8000">
+          <label class="f">Steps — goal 5000</label>
+          <input type="number" id="inSteps" min="0" step="100" inputmode="numeric" placeholder="e.g. 5000">
         </div>
       </div>
     </div>
@@ -267,7 +306,7 @@ table.hist tr:last-child td{border-bottom:none}
     <div class="notice">Use substitutions only when necessary — stick to the customised plan for best results.</div>
     <div class="card">
       <h3>Food substitution calculator</h3>
-      <p class="sub">Every food below is listed at ≈100 kcal, so swaps keep your calories on target. Swap within the same group.</p>
+      <p class="sub">Every food below is listed at ≈100 kcal, so swaps keep your calories on target. Swap within the same group — to move between animal, dairy and plant protein, use the cross-protein card below.</p>
       <label class="f">Food group</label>
       <select id="subCat"></select>
       <label class="f">Replace</label>
@@ -284,6 +323,33 @@ table.hist tr:last-child td{border-bottom:none}
         <div class="exp" id="subResultExp"></div>
       </div>
     </div>
+    <div class="card">
+      <h3>Cross-protein swap</h3>
+      <p class="sub">Swap between animal, dairy and plant proteins. Matching <strong>protein</strong> protects your 85 g daily target — calories shift a little, and the change is shown so you can adjust elsewhere.</p>
+      <label class="f">Match on</label>
+      <div class="chips" id="xpMode">
+        <button class="chip on" data-v="protein">Same protein</button>
+        <button class="chip" data-v="kcal">Same calories</button>
+      </div>
+      <label class="f">Replace</label>
+      <select id="xpFrom"></select>
+      <label class="f">Amount in your plan</label>
+      <div class="row" style="flex-wrap:nowrap">
+        <input type="number" id="xpQty" min="0" step="5" inputmode="decimal" style="flex:1">
+        <span id="xpUnit" style="font-weight:600; color:var(--ink2); min-width:52px">g</span>
+      </div>
+      <label class="f">With</label>
+      <select id="xpTo"></select>
+      <div class="result-box" id="xpResult" hidden>
+        <div class="big" id="xpQtyOut"></div>
+        <div class="exp" id="xpExp"></div>
+        <div class="exp" id="xpDelta"></div>
+      </div>
+      <div class="opt-detail" style="margin-top:12px">
+        Plant proteins carry carbs with them, dairy and nuts carry fat. Animal → plant usually needs a bigger portion for the same protein.
+      </div>
+    </div>
+
     <div class="card">
       <h3>Green veggies — free</h3>
       <p class="sub">All green vegetables are allowed (sabzi or sautéed). Potatoes, pulses, chana and rajma are <strong>not</strong> vegetables — only if the plan includes them.</p>
@@ -312,6 +378,52 @@ table.hist tr:last-child td{border-bottom:none}
         <li>Meals can be combined or interchanged; consistency matters most.</li>
         <li>Use ghee / olive / coconut oil in curries.</li>
         <li>Digestion-friendly fruits: papaya, pineapple, apple, banana.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ TRAIN ============ -->
+  <section class="pane" id="pane-train">
+    <div class="card">
+      <h3 id="trTitle">Level 1.0 · Bodyweight</h3>
+      <p class="sub" id="trSub"></p>
+      <div class="plan-total"><span>Daily step goal</span><span><strong>5000 steps</strong></span></div>
+      <div class="plan-total"><span>Rest between sets</span><span>1–2 minutes</span></div>
+      <div class="plan-total"><span>Pre-workout</span><span>Walk 5 min, indoor or outdoor</span></div>
+    </div>
+    <div class="eyebrow">Warm up — before every session</div>
+    <div class="card" id="trWarmup"></div>
+    <div class="eyebrow">The week</div>
+    <div id="trDays"></div>
+    <div class="eyebrow">Cool down — after every session</div>
+    <div class="card" id="trCooldown"></div>
+    <div class="eyebrow">Guidelines</div>
+    <div class="card">
+      <h3>Getting stronger</h3>
+      <ul class="faq">
+        <li>Goal is to improve every week — week 0 weight does not matter. Start light and adjust.</li>
+        <li>Progress counts as any of: more weight (even 1 kg), more reps at the same weight, better execution, or less rest.</li>
+        <li>If a set feels too easy, increase the weight.</li>
+        <li>Execution over weight, always. Your muscles don't know the weight — only your ego does.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Execution &amp; safety</h3>
+      <ul class="faq">
+        <li>Check form on the exercise links, or the YouTube channel <strong>Scott Herman Fitness</strong> — 10 minutes while warming up.</li>
+        <li>Unsure about a movement? Film the set and send it with the weekly check-in for correction.</li>
+        <li>Always warm up: 5 min brisk walk, jog or cycle, plus 1–2 warm-up sets before heavy sets.</li>
+        <li>Always stretch after the session.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Performance</h3>
+      <ul class="faq">
+        <li>Sleep is the simplest lever — aim for 6.5 to 9 hours.</li>
+        <li>At least 750 ml water before and during the workout. Salt or electrolytes are fine.</li>
+        <li>Keep a log of every session — that is what this tab is for.</li>
+        <li>Do the exercises at a relaxed pace. Don't rush.</li>
+        <li>Send daily updates with your step count. Check in every Sunday.</li>
       </ul>
     </div>
   </section>
@@ -364,6 +476,17 @@ table.hist tr:last-child td{border-bottom:none}
       <p class="sub" id="chartEmpty" style="text-align:center; padding:20px 0">Save your first weekly check-in to start the trend.</p>
     </div>
     <div class="card">
+      <h3>Training — last 4 weeks</h3>
+      <p class="sub" id="trainSummary"></p>
+      <div class="dots" id="trainDots"></div>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>Session done</span>
+        <span><i style="background:var(--accent-soft)"></i>Rest day</span>
+        <span><i style="background:var(--bad-soft)"></i>Missed</span>
+        <span><i style="background:var(--surface2); border:1px solid var(--line)"></i>Upcoming</span>
+      </div>
+    </div>
+    <div class="card">
       <h3>Measurement history</h3>
       <div class="table-wrap">
         <table class="hist" id="histTable">
@@ -389,6 +512,7 @@ table.hist tr:last-child td{border-bottom:none}
       <button data-pane="today" class="on"><span class="ic">☀</span>Today</button>
       <button data-pane="swap"><span class="ic">⇄</span>Swap</button>
       <button data-pane="plan"><span class="ic">▤</span>Plan</button>
+      <button data-pane="train"><span class="ic">✚</span>Train</button>
       <button data-pane="report"><span class="ic">✉</span>Report</button>
       <button data-pane="progress"><span class="ic">↗</span>Progress</button>
     </div>
@@ -453,17 +577,17 @@ const SUBS = {
   ['Duck (meat only)',70],['Turkey (skinless)',90],['Grilled chicken (boneless)',70],['Beef (lean)',80],
   ['Crab meat',110],['Chicken liver',70],['Mutton liver',65],['Pork (lean)',90]],
  'Protein — dairy':[
-  ['Paneer (full-fat)',80],['Paneer (low-fat)',90],['Tofu (soy paneer)',120],['Milk, whole',180,'ml'],
+  ['Paneer (full-fat)',33],['Paneer (low-fat)',52],['Tofu (soy paneer)',120],['Milk, whole',180,'ml'],
   ['Milk, skimmed',220,'ml'],['Greek yogurt (plain, low-fat)',120],['Dahi (homemade curd)',140],
   ['Buttermilk (low-fat)',350,'ml'],['Whey protein',25],['Cottage cheese (homemade)',85],
   ['Cheddar cheese',25],['Mozzarella cheese',30]],
  'Protein — plant':[
-  ['Soya chunks',150],['Tofu (soy paneer)',120],['Tempeh',110],['Rajma (kidney beans)',100],
+  ['Soya chunks',150],['Tofu (soy paneer)',120],['Tempeh',52],['Rajma (kidney beans)',100],
   ['Chana (chickpeas)',100],['Dal, cooked (moong/masoor/toor)',100],['Urad dal (black gram)',90],
   ['Horse gram (kulthi)',90],['Chole (cooked chickpeas)',90],['Green peas (boiled)',130],
   ['Sprouts (moong/chana/mixed)',140],['Edamame (cooked)',140],['Lentils (cooked)',100],
   ['Masoor dal (cooked)',110],['Besan (chickpea flour, raw)',25],['Sunflower seeds',20],
-  ['Flaxseeds',25],['Chia seeds',25],['Hemp seeds',30]],
+  ['Flaxseeds',25],['Chia seeds',25],['Hemp seeds',18]],
  'Carbohydrates':[
   ['White rice',80],['Brown rice',120],['Oats',30],['Dalia (broken wheat)',120],['Weetabix',30],
   ['Dates',30],['Whole wheat bread (2 slices)',50],['Wheat chapati',50],['Puttu',60],
@@ -481,7 +605,7 @@ const SUBS = {
   ['Sesame seeds (til)',15],['Pumpkin seeds',15],['Oil (coconut/olive/groundnut/mustard)',10],
   ['Butter / ghee',10],['Peanut butter (unsweetened)',16],['Tahini',15],['Cheese (cheddar/mozzarella)',25],
   ['Coconut milk',50,'ml'],['Groundnut chikki',20],['Coconut oil',10],['Egg yolk',3,'yolks'],
-  ['Paneer (full-fat)',30]],
+  ['Paneer (full-fat)',33]],
  'Fruits':[
   ['Banana',90],['Apple',150],['Fig',100],['Blueberries',180],['Mango',120],['Guava',135],
   ['Grapes (green/red)',120],['Kiwi',160],['Muskmelon',350],['Orange',200],['Pomegranate',120],
@@ -489,6 +613,76 @@ const SUBS = {
   ['Watermelon',250],['Custard apple (sitaphal)',125],['Jackfruit (ripe)',90],['Star fruit',200],
   ['Lychee',150],['Plum',170],['Dates (fresh)',30],['Tamarind (pulp)',30],['Amla (gooseberry)',350]]
 };
+
+/* ---------------- Workout: SHANUVER Level 1.0, bodyweight × 4 weeks ----------------
+   Exercise entries are [name, prescription, sets, video link].                      */
+const WORKOUT = {
+ title:'Level 1.0 · Bodyweight', weeks:4, stepGoal:5000,
+ warmup:[
+  ['General warm up','Walk or cycle at slow pace — 10 min',''],
+  ['Shoulder mobility drill','2 minutes','https://youtu.be/HiCnRk1_z5Q'],
+  ['Hip mobility drill','2 minutes','https://youtu.be/nLuvQCTPrcY']],
+ days:[
+  {n:1, type:'train', ex:[
+    ['Wall Push Ups','12, 10, 10 reps',3,'https://youtu.be/YB0egDzsu18'],
+    ['Incline Mountain Climber','12, 10, 10 reps',3,'https://youtu.be/_ZMB92X4zgM'],
+    ['Incline Plank','30 seconds each',3,'https://youtu.be/mf6x119YTOM'],
+    ['Chair Squats','12, 10, 10 reps',3,'https://youtu.be/LrNhnsWPtgQ'],
+    ['Beginner Jumping Jacks','30 each',3,'https://youtu.be/Bqy1xIXX2nc']]},
+  {n:2, type:'train', ex:[
+    ['Reverse Lunge with Rotation','12, 10, 10 reps',3,'https://youtu.be/5IYEoYBnjiI'],
+    ['Ground Superman','12, 10, 10 reps',3,'https://youtu.be/BONEL9y0bcI'],
+    ['Hip Raise with Backpack','12, 10, 10 reps',3,'https://youtu.be/wh_ZLb5Tynk'],
+    ['Standing Butt Kicks','12, 10, 10 reps',3,'https://youtu.be/oMW59TKZvaI'],
+    ['Bent Over Row with Backpack','12, 10, 10 reps',3,'https://youtu.be/8-7D1GgT28M']]},
+  {n:3, type:'rest'},
+  {n:4, type:'train', ex:[
+    ['Beginner High Knees','12, 10, 10 reps',3,'https://youtu.be/Xh8JEoYjYhg'],
+    ['Twisted Warrior','12, 10, 10 reps',3,'https://youtu.be/5hgvZuQ_0dc'],
+    ['Bear Walk','12, 10, 10 reps',3,'https://youtu.be/t8XLor7unqU'],
+    ['Donkey Kick Backs','12, 10, 10 reps',3,'https://youtu.be/SJ1Xuz9D-ZQ'],
+    ['Sumo Squats','12, 10, 10 reps',3,'https://youtu.be/kjlfpqXnyL8']]},
+  {n:5, type:'rest'},
+  {n:6, type:'circuit', rounds:3, note:'3 rounds in total · 10 reps each · 60 seconds rest between rounds', ex:[
+    ['Floor Crunches','10 reps',3,'https://youtu.be/Xyd_fa5zoEU'],
+    ['Beginner Lunges','10 reps',3,'https://youtu.be/QOVaHwm-Q6U'],
+    ['Beginner Sprawls','10 reps',3,'https://youtu.be/_UAcX_oRJ_k']]},
+  {n:7, type:'rest'}],
+ cooldown:[
+  ['Standing side stretch — right','20 s'],['Standing side stretch — left','20 s'],
+  ['Shoulder stretch — right','20 s'],['Shoulder stretch — left','20 s'],
+  ['Toes reach','20 s'],['Hip stretch — right','20 s'],['Hip stretch — left','20 s'],
+  ['Glute stretch — right','30 s'],['Glute stretch — left','30 s']],
+ cooldownLink:'https://www.instagram.com/p/CFGqcTxph18/'
+};
+const REST_NOTE = 'Active rest day — complete your step count.';
+
+/* ----- Protein density: grams of protein per 100 kcal of the food -----
+   Keyed by food name, because this ratio belongs to the food itself and is
+   what makes a swap across protein types honest: 100 kcal of chicken carries
+   ~19 g protein, 100 kcal of chana carries ~5 g. Matching calories alone
+   would quietly cost most of the day's 85 g target.                       */
+const P100 = {
+ /* animal */
+ 'Chicken breast (boneless, skinless)':19,'Whole eggs':8,'Egg whites':21,
+ 'Mackerel (curry/steamed)':18,'Sardine / Mathi':17,'Kingfish (seer fish)':19,'Pomfret':19,
+ 'Tilapia':20,'Fish fry (lightly fried)':12,'Prawns (shrimp)':22,'Squid (calamari)':17,
+ 'Whole chicken (with skin)':9,'Lamb (lean)':16,'Mutton (lean)':14,'Goat meat (lean)':19,
+ 'Duck (meat only)':14,'Turkey (skinless)':22,'Grilled chicken (boneless)':19,'Beef (lean)':15,
+ 'Crab meat':20,'Chicken liver':14,'Mutton liver':15,'Pork (lean)':15,
+ /* dairy */
+ 'Paneer (full-fat)':6,'Paneer (low-fat)':11,'Tofu (soy paneer)':10,'Milk, whole':5,
+ 'Milk, skimmed':10,'Greek yogurt (plain, low-fat)':14,'Dahi (homemade curd)':6,
+ 'Buttermilk (low-fat)':8,'Whey protein':20,'Cottage cheese (homemade)':11,
+ 'Cheddar cheese':6,'Mozzarella cheese':7,
+ /* plant */
+ 'Soya chunks':15,'Tempeh':10,'Rajma (kidney beans)':7,'Chana (chickpeas)':5,
+ 'Dal, cooked (moong/masoor/toor)':7,'Urad dal (black gram)':7,'Horse gram (kulthi)':7,
+ 'Chole (cooked chickpeas)':5,'Green peas (boiled)':6,'Sprouts (moong/chana/mixed)':8,
+ 'Edamame (cooked)':9,'Lentils (cooked)':8,'Masoor dal (cooked)':8,
+ 'Besan (chickpea flour, raw)':6,'Sunflower seeds':4,'Flaxseeds':3,'Chia seeds':3,'Hemp seeds':6
+};
+const PROTEIN_CATS = ['Protein — animal','Protein — dairy','Protein — plant'];
 
 const WK_QUESTIONS = [
  ['feel','How do you feel overall?'],
@@ -525,8 +719,30 @@ function dayNum(dateStr){
   return Math.round((b-a)/86400000)+1;
 }
 function curWeekNum(){ return Math.max(1, Math.ceil(dayNum(todayStr())/7)); }
-function blankDay(){ return {workout:'', meals:[{},{},{},{},{}], water:'', energy:0, sleep:'', steps:''}; }
-function getDay(d){ if(!state.days[d]) state.days[d]=blankDay(); return state.days[d]; }
+function blankDay(){
+  return {workout:'', meals:[{},{},{},{},{}], water:'', energy:0, sleep:'', steps:'',
+          sets:{}, exNote:{}, warmup:false, cooldown:false};
+}
+function getDay(d){
+  if(!state.days[d]) state.days[d]=blankDay();
+  const day=state.days[d];
+  if(!day.sets) day.sets={};          // days saved before workout logging existed
+  if(!day.exNote) day.exNote={};
+  return day;
+}
+/* Program repeats on a 7-day cycle anchored to the start date in Settings. */
+function progDay(dateStr){ return WORKOUT.days[(((dayNum(dateStr)-1)%7)+7)%7]; }
+function sessionStats(dateStr){
+  const pd=progDay(dateStr), day=getDay(dateStr);
+  if(pd.type==='rest') return {pd, done:0, total:0, exDone:0};
+  let done=0, exDone=0;
+  pd.ex.forEach((e,i)=>{
+    const s=day.sets[i]||[];
+    const n=s.filter(Boolean).length;
+    done+=n; if(n>=e[2]) exDone++;
+  });
+  return {pd, done, total:pd.ex.reduce((a,e)=>a+e[2],0), exDone};
+}
 
 /* ---------------- Elements / helpers ---------------- */
 const $=id=>document.getElementById(id);
@@ -552,6 +768,7 @@ document.querySelectorAll('nav.tabs button').forEach(b=>{
     document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('on',x===b));
     document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
     $('pane-'+b.dataset.pane).classList.add('on');
+    if(b.dataset.pane==='train') markTrainToday();
     if(b.dataset.pane==='report') renderReports();
     if(b.dataset.pane==='progress') renderProgress();
     window.scrollTo({top:0});
@@ -595,11 +812,79 @@ function buildMealCards(){
     });
   });
 }
+function renderWorkout(){
+  const day=getDay(curDate);
+  const {pd,done,total,exDone}=sessionStats(curDate);
+  const host=$('woSession');
+  $('woTitle').textContent = 'Workout · Day '+pd.n+'/7';
+  if(pd.type==='rest'){
+    $('woSub').textContent=REST_NOTE;
+    $('woProg').textContent='';
+    host.innerHTML='';
+    return;
+  }
+  $('woSub').textContent = pd.type==='circuit' ? pd.note : 'Rest 1–2 minutes between sets.';
+  $('woProg').textContent = done+'/'+total+' sets';
+  const label = pd.type==='circuit' ? 'Round' : 'Set';
+  host.innerHTML = pd.ex.map((e,i)=>{
+    const s=day.sets[i]||[];
+    const btns=Array.from({length:e[2]},(_,k)=>
+      `<button class="set-btn ${s[k]?'on':''}" data-ex="${i}" data-set="${k}"
+        aria-pressed="${!!s[k]}" aria-label="${label} ${k+1} of ${e[0]}">${k+1}</button>`).join('');
+    return `<div class="ex-row">
+      <div class="ex-top">
+        <div><div class="ex-name">${e[0]}</div><div class="ex-presc">${e[2]} × ${e[1]}</div></div>
+        ${e[3]?`<a class="ex-link" href="${e[3]}" target="_blank" rel="noopener">▶ form</a>`:''}
+      </div>
+      <div class="sets">${btns}<span class="done-n">${label.toLowerCase()}s</span></div>
+      <input type="text" class="ex-note-in" data-note="${i}" value="${(day.exNote[i]||'').replace(/"/g,'&quot;')}"
+        placeholder="Weight, reps or how it felt">
+    </div>`;
+  }).join('') + `
+    <div class="ex-row">
+      <div class="chips" style="margin-top:0">
+        <button class="chip ${day.warmup?'on':''}" id="woWarm">Warm-up done</button>
+        <button class="chip ${day.cooldown?'on':''}" id="woCool">Cool-down done</button>
+      </div>
+    </div>`;
+}
+$('woSession').addEventListener('click',e=>{
+  const day=getDay(curDate);
+  const b=e.target.closest('.set-btn');
+  if(b){
+    const i=+b.dataset.ex, k=+b.dataset.set;
+    const s=day.sets[i]||(day.sets[i]=[]);
+    s[k]=!s[k];
+    // update in place — a full re-render here would drop focus from a note being typed
+    b.classList.toggle('on', !!s[k]);
+    b.setAttribute('aria-pressed', String(!!s[k]));
+    const st=sessionStats(curDate);
+    $('woProg').textContent = st.done+'/'+st.total+' sets';
+    // finishing the last set marks the session done, but never un-marks a manual choice
+    if(st.total && st.done===st.total && !day.workout){
+      day.workout='Completed';
+      document.querySelectorAll('#workoutChips .chip').forEach(c=>
+        c.classList.toggle('on', c.dataset.v===day.workout));
+    }
+    save(); updateStats(); return;
+  }
+  const w=e.target.closest('#woWarm'), c=e.target.closest('#woCool');
+  if(w||c){
+    const on = w ? (day.warmup=!day.warmup) : (day.cooldown=!day.cooldown);
+    (w||c).classList.toggle('on', on);
+    save();
+  }
+});
+$('woSession').addEventListener('input',e=>{
+  const n=e.target.closest('[data-note]'); if(!n) return;
+  getDay(curDate).exNote[+n.dataset.note]=n.value; save();
+});
 function renderToday(){
   const day=getDay(curDate);
   $('dayChip').textContent='Day '+dayNum(curDate)+' · Wk '+Math.max(1,Math.ceil(dayNum(curDate)/7));
   document.querySelectorAll('#workoutChips .chip').forEach(c=>
     c.classList.toggle('on', c.dataset.v===day.workout));
+  renderWorkout();
   MEALS.forEach((m,mi)=>{
     const sel=day.meals[mi]||{};
     document.querySelectorAll(`#mealCards .chip[data-m="${mi}"]`).forEach(c=>
@@ -650,7 +935,8 @@ function updateStats(){
   let streak=0, d=new Date(curDate+'T00:00');
   for(;;){
     const ds=todayStr(d), rec=state.days[ds];
-    const logged = rec && (rec.workout || rec.meals.some(m=>m.opt!==undefined));
+    const logged = rec && (rec.workout || rec.meals.some(m=>m.opt!==undefined)
+                   || Object.values(rec.sets||{}).some(s=>s.some(Boolean)));
     if(!logged) break;
     streak++; d.setDate(d.getDate()-1);
   }
@@ -674,6 +960,9 @@ function syncUnit(){
   const it=subItems()[+fromSel.value];
   $('subUnit').textContent = it[2]||'g';
 }
+function roundQty(v,unit){
+  return (unit==='g'||unit==='ml') ? Math.round(v) : Math.round(v*2)/2;  // half eggs/whites are usable
+}
 function calcSub(){
   const items=subItems();
   const from=items[+fromSel.value], to=items[+toSel.value];
@@ -683,10 +972,11 @@ function calcSub(){
   const kcal = qty/from[1]*100;
   const toQty = kcal/100*to[1];
   const toUnit = to[2]||'g';
-  const rounded = toUnit==='g'||toUnit==='ml' ? Math.round(toQty) : Math.round(toQty*10)/10;
-  $('subResultQty').textContent = `${rounded} ${toUnit} · ${to[0]}`;
-  $('subResultExp').textContent =
-    `${qty} ${from[2]||'g'} ${from[0]} ≈ ${Math.round(kcal)} kcal — same calories either way.`;
+  $('subResultQty').textContent = `${roundQty(toQty,toUnit)} ${toUnit} · ${to[0]}`;
+  let exp = `${qty} ${from[2]||'g'} ${from[0]} ≈ ${Math.round(kcal)} kcal — same calories either way.`;
+  const pf=P100[from[0]], pt=P100[to[0]];
+  if(pf&&pt) exp += ` Protein ${Math.round(kcal/100*pf)} g → ${Math.round(kcal/100*pt)} g.`;
+  $('subResultExp').textContent = exp;
   box.hidden=false;
 }
 catSel.addEventListener('change',refreshSubLists);
@@ -694,6 +984,81 @@ fromSel.addEventListener('change',()=>{ const it=subItems()[+fromSel.value]; $('
 toSel.addEventListener('change',calcSub);
 $('subQty').addEventListener('input',calcSub);
 refreshSubLists();
+
+/* --------- Cross-protein swap (animal ⇄ dairy ⇄ plant) --------- */
+const XP = [];   // flat list of every protein food, tagged with its group
+PROTEIN_CATS.forEach(cat=>{
+  (SUBS[cat]||[]).forEach(it=>{
+    if(P100[it[0]]===undefined) return;                 // no protein data, no honest swap
+    if(XP.some(x=>x.name===it[0])) return;              // e.g. tofu is listed in dairy and plant
+    XP.push({name:it[0], per100:it[1], unit:it[2]||'g', p:P100[it[0]],
+             group:cat.replace('Protein — ','')});
+  });
+});
+function xpOptions(){
+  const groups={};
+  XP.forEach((x,i)=>{ (groups[x.group]=groups[x.group]||[]).push(`<option value="${i}">${x.name}</option>`); });
+  return Object.keys(groups).map(g=>
+    `<optgroup label="${g.charAt(0).toUpperCase()+g.slice(1)}">${groups[g].join('')}</optgroup>`).join('');
+}
+let xpMatch='protein';
+const xpFrom=$('xpFrom'), xpTo=$('xpTo');
+xpFrom.innerHTML=xpTo.innerHTML=xpOptions();
+xpTo.value = String(XP.findIndex(x=>x.group==='plant'));   // default to a genuinely cross-type swap
+$('xpQty').value = XP[0].per100;
+function xpCalc(){
+  const from=XP[+xpFrom.value], to=XP[+xpTo.value];
+  const qty=parseFloat($('xpQty').value);
+  const box=$('xpResult');
+  if(!from||!to||!qty||qty<=0){ box.hidden=true; return; }
+  const kcal = qty/from.per100*100;
+  const prot = kcal/100*from.p;
+  const toKcal = xpMatch==='protein' ? prot/to.p*100 : kcal;
+  const toQty  = toKcal/100*to.per100;
+  const toProt = toKcal/100*to.p;
+  const dK = Math.round(toKcal-kcal), dP = Math.round(toProt-prot);
+
+  $('xpQtyOut').textContent = `${roundQty(toQty,to.unit)} ${to.unit} · ${to.name}`;
+  $('xpExp').textContent =
+    `${qty} ${from.unit} ${from.name} (${from.group}) = ${Math.round(kcal)} kcal · ${Math.round(prot)} g protein`
+    + ` → ${Math.round(toKcal)} kcal · ${Math.round(toProt)} g protein (${to.group}).`;
+
+  const d=$('xpDelta');
+  if(xpMatch==='protein'){
+    const rice = Math.abs(dK)/100*80;   // 80 g white rice ≈ 100 kcal, from the table above
+    const oil  = Math.abs(dK)/100*10;   // 10 g oil ≈ 100 kcal
+    if(Math.abs(dK)<15){
+      d.textContent='Same protein, and calories land within 15 kcal — no adjustment needed.';
+    } else {
+      d.textContent = (dK>0
+        ? `Same protein but +${dK} kcal — trim about ${Math.round(rice)} g rice or ${Math.round(oil)} g oil from the day.`
+        : `Same protein but ${dK} kcal — add about ${Math.round(rice)} g rice or ${Math.round(oil)} g oil to the day.`)
+        + (Math.abs(dK)>=120
+           ? ` That is a big shift for one meal — ${to.name} is a very different food, so a leaner pick in the ${to.group} list will swap more cleanly.`
+           : '');
+    }
+  } else {
+    d.textContent = dP===0
+      ? 'Same calories, and the protein matches too.'
+      : (dP<0 ? `Same calories but ${dP} g protein — the day falls short of 85 g unless you make it up elsewhere.`
+              : `Same calories and +${dP} g protein — a straight upgrade.`);
+  }
+  box.hidden=false;
+}
+$('xpMode').addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b) return;
+  xpMatch=b.dataset.v;
+  document.querySelectorAll('#xpMode .chip').forEach(c=>c.classList.toggle('on',c===b));
+  xpCalc();
+});
+xpFrom.addEventListener('change',()=>{
+  const it=XP[+xpFrom.value];
+  $('xpQty').value=it.per100; $('xpUnit').textContent=it.unit; xpCalc();
+});
+xpTo.addEventListener('change',xpCalc);
+$('xpQty').addEventListener('input',xpCalc);
+$('xpUnit').textContent=XP[0].unit;
+xpCalc();
 
 /* ---------------- Plan pane ---------------- */
 (function(){
@@ -709,6 +1074,40 @@ refreshSubLists();
   });
 })();
 
+/* ---------------- Train pane ---------------- */
+(function(){
+  const link=(u,t)=>u?`<a class="ex-link" href="${u}" target="_blank" rel="noopener">${t}</a>`:'';
+  $('trSub').textContent='Bodyweight programme, 4 weeks. The same 7-day cycle repeats, starting from Day 1 of your plan.';
+  $('trWarmup').innerHTML = WORKOUT.warmup.map(w=>
+    `<div class="ex-row"><div class="ex-top">
+      <div><div class="ex-name">${w[0]}</div><div class="ex-presc">${w[1]}</div></div>
+      ${link(w[2],'▶ watch')}</div></div>`).join('');
+  $('trDays').innerHTML = WORKOUT.days.map(d=>{
+    const head=`<h3>Day ${d.n} · ${d.type==='rest'?'Active rest':d.type==='circuit'?'Circuit':'Workout'}<span class="today-badge" hidden>Today</span></h3>`;
+    if(d.type==='rest')
+      return `<div class="card" id="trDay${d.n}">${head}<p class="sub">${REST_NOTE}</p></div>`;
+    return `<div class="card" id="trDay${d.n}">${head}
+      ${d.note?`<p class="sub">${d.note}</p>`:''}
+      ${d.ex.map(e=>`<div class="ex-row"><div class="ex-top">
+        <div><div class="ex-name">${e[0]}</div><div class="ex-presc">${e[2]} × ${e[1]}</div></div>
+        ${link(e[3],'▶ form')}</div></div>`).join('')}
+    </div>`;
+  }).join('');
+  $('trCooldown').innerHTML =
+    WORKOUT.cooldown.map(c=>`<div class="ex-row"><div class="ex-top">
+      <div class="ex-name">${c[0]}</div><div class="ex-presc">${c[1]}</div></div></div>`).join('')
+    + `<div class="ex-row"><div class="ex-top">${link(WORKOUT.cooldownLink,'▶ full cool-down')}</div></div>`;
+})();
+/* Which card is "today" depends on the start date, so refresh it rather than bake it in. */
+function markTrainToday(){
+  const n=progDay(todayStr()).n;
+  WORKOUT.days.forEach(d=>{
+    const card=$('trDay'+d.n); if(!card) return;
+    card.classList.toggle('is-today', d.n===n);
+    card.querySelector('.today-badge').hidden = d.n!==n;
+  });
+}
+
 /* ---------------- Reports ---------------- */
 $('repDate').value=todayStr();
 $('repDate').addEventListener('change',renderDailyReport);
@@ -723,12 +1122,23 @@ function dailyText(){
   const day=state.days[d]||blankDay();
   const L=[];
   L.push('Day: '+dayNum(d));
-  L.push('Workout: '+(day.workout||'-'));
+  const {pd,done,total}=sessionStats(d);
+  if(pd.type==='rest'){
+    L.push('Workout: Day '+pd.n+'/7 — active rest'+(day.workout?' ('+day.workout+')':''));
+  } else {
+    const status = day.workout || (done ? 'In progress' : '-');
+    L.push('Workout: Day '+pd.n+'/7 — '+status+(done?' ('+done+'/'+total+' sets)':''));
+    pd.ex.forEach((e,i)=>{
+      const n=(day.sets[i]||[]).filter(Boolean).length;
+      const note=(day.exNote[i]||'').trim();
+      L.push('  - '+e[0]+' '+n+'/'+e[2]+(note?' ('+note+')':''));
+    });
+  }
   day.meals.forEach((sel,mi)=>L.push('Meal '+(mi+1)+': '+mealText(sel,mi)));
   L.push('Water intake: '+(day.water?day.water+' Litres':'-'));
   L.push('Energy: '+(day.energy?day.energy+'/10':'-'));
   L.push('Sleep: '+(day.sleep?day.sleep+' hours':'-'));
-  L.push('Steps: '+(day.steps||'-'));
+  L.push('Steps: '+(day.steps||'-')+' (goal '+WORKOUT.stepGoal+')');
   return L.join('\n');
 }
 function renderDailyReport(){ $('dailyReport').textContent=dailyText(); }
@@ -888,6 +1298,32 @@ function renderProgress(){
   });
   $('histEmpty').style.display=entries.length?'none':'block';
   drawChart(withW, sw);
+  renderTrainDots();
+}
+function renderTrainDots(){
+  const today=todayStr(), host=$('trainDots');
+  let sessions=0, doneCount=0, html='';
+  for(let i=27;i>=0;i--){
+    const d=new Date(today+'T00:00'); d.setDate(d.getDate()-i);
+    const ds=todayStr(d);
+    if(dayNum(ds)<1){ html+='<div class="dot" title="Before start"></div>'; continue; }
+    const {pd,done,total}=sessionStats(ds);
+    const rec=state.days[ds];
+    let cls='', tip='Day '+pd.n;
+    if(pd.type==='rest'){ cls='rest'; tip+=' · rest'; }
+    else{
+      sessions++;
+      const complete = (total && done===total) || (rec && rec.workout==='Completed');
+      if(complete){ cls='done'; doneCount++; tip+=' · done'; }
+      else if(ds<today){ cls='miss'; tip+=' · '+done+'/'+total+' sets'; }
+      else tip+=' · today';
+    }
+    html+=`<div class="dot ${cls}" title="${ds} · ${tip}"></div>`;
+  }
+  host.innerHTML=html;
+  $('trainSummary').textContent = sessions
+    ? doneCount+' of '+sessions+' sessions completed. One row per week, today is the last square.'
+    : 'No sessions scheduled yet.';
 }
 function drawChart(points, startWeight){
   const svg=$('wtChart'); const empty=$('chartEmpty');
@@ -990,7 +1426,7 @@ $('btnSaveSettings').addEventListener('click',()=>{
   s.startWaist=$('setWa').value; s.startHip=$('setH').value;
   s.phone=$('setPhone').value.trim();
   save(); $('settingsModal').classList.remove('on');
-  renderToday(); renderReports(); toast('Settings saved');
+  renderToday(); renderReports(); markTrainToday(); toast('Settings saved');
 });
 
 /* ---------------- Init ---------------- */
@@ -998,4 +1434,11 @@ buildMealCards();
 buildWeeklyInputs();
 renderToday();
 renderReports();
+markTrainToday();
+
+/* Offline support. Only over http(s) — opening the file directly has no
+   service worker, which is fine, it just means no offline caching. */
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
 </script>
