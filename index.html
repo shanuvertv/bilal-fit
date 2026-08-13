@@ -127,7 +127,7 @@ nav.tabs{
   background:var(--surface); border-top:1px solid var(--line);
   padding:6px max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-bottom));
 }
-nav.tabs .inner{max-width:520px; margin:0 auto; display:grid; grid-template-columns:repeat(5,1fr)}
+nav.tabs .inner{max-width:520px; margin:0 auto; display:grid; grid-template-columns:repeat(6,1fr)}
 nav.tabs button{
   border:none; background:none; color:var(--ink3); font:inherit; font-size:11px; font-weight:600;
   display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 0; cursor:pointer;
@@ -199,6 +199,37 @@ table.hist tr:last-child td{border-bottom:none}
   font-variant-numeric:tabular-nums; border-top:1px dashed var(--line); margin-top:8px; padding-top:8px;
 }
 .faq li{margin:6px 0 6px 18px; font-size:14px; color:var(--ink2)}
+.card.is-today{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), var(--shadow)}
+.today-badge{
+  font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--accent); background:var(--accent-soft); border-radius:999px; padding:3px 9px; margin-left:8px;
+}
+.ex-row{padding:11px 0; border-bottom:1px solid var(--line)}
+.ex-row:last-child{border-bottom:none}
+.ex-top{display:flex; justify-content:space-between; gap:10px; align-items:baseline}
+.ex-name{font-size:14.5px; font-weight:700}
+.ex-presc{font-size:12.5px; color:var(--ink2); margin-top:2px}
+.ex-link{font-size:12px; font-weight:700; color:var(--accent); text-decoration:none; white-space:nowrap}
+.sets{display:flex; gap:6px; margin-top:9px; align-items:center; flex-wrap:wrap}
+.set-btn{
+  min-width:44px; height:38px; border-radius:9px; border:1px solid var(--line);
+  background:var(--surface); color:var(--ink2); font:inherit; font-size:13px; font-weight:700;
+  cursor:pointer; touch-action:manipulation;
+}
+.set-btn.on{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.sets .done-n{font-size:12px; color:var(--ink3); font-weight:600; margin-left:2px}
+.ex-note-in{margin-top:8px; font-size:14px; min-height:40px; padding:8px 10px}
+.wo-head{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.wo-prog{font-size:12.5px; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums}
+/* 28 days as 4 rows of 7: each row is one week of the cycle, each column the same cycle day */
+.dots{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-top:10px; max-width:300px}
+.dot{aspect-ratio:1; border-radius:7px; background:var(--surface2); border:1px solid var(--line)}
+.dot.done{background:var(--accent); border-color:var(--accent)}
+.dot.rest{background:var(--accent-soft); border-color:var(--accent-soft)}
+.dot.miss{background:var(--bad-soft); border-color:var(--bad-soft)}
+.legend{display:flex; gap:12px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--ink3)}
+.legend span{display:flex; align-items:center; gap:5px}
+.legend i{width:12px; height:12px; border-radius:4px; display:inline-block}
 .delta-up{color:var(--bad); font-weight:700}
 .delta-down{color:var(--good); font-weight:700}
 </style>
@@ -227,12 +258,17 @@ table.hist tr:last-child td{border-bottom:none}
     </div>
 
     <div class="card">
-      <h3>Workout</h3>
+      <div class="wo-head">
+        <h3 id="woTitle">Workout</h3>
+        <span class="wo-prog" id="woProg"></span>
+      </div>
+      <p class="sub" id="woSub"></p>
       <div class="chips" id="workoutChips">
         <button class="chip" data-v="Completed">✔ Completed</button>
         <button class="chip" data-v="Not completed">✘ Not completed</button>
         <button class="chip" data-v="Rest day">Rest day</button>
       </div>
+      <div id="woSession"></div>
     </div>
 
     <div id="mealCards"></div>
@@ -252,8 +288,8 @@ table.hist tr:last-child td{border-bottom:none}
           <input type="number" id="inSleep" min="0" max="16" step="0.5" inputmode="decimal" placeholder="e.g. 7">
         </div>
         <div>
-          <label class="f">Steps</label>
-          <input type="number" id="inSteps" min="0" step="100" inputmode="numeric" placeholder="e.g. 8000">
+          <label class="f">Steps — goal 5000</label>
+          <input type="number" id="inSteps" min="0" step="100" inputmode="numeric" placeholder="e.g. 5000">
         </div>
       </div>
     </div>
@@ -343,6 +379,52 @@ table.hist tr:last-child td{border-bottom:none}
     </div>
   </section>
 
+  <!-- ============ TRAIN ============ -->
+  <section class="pane" id="pane-train">
+    <div class="card">
+      <h3 id="trTitle">Level 1.0 · Bodyweight</h3>
+      <p class="sub" id="trSub"></p>
+      <div class="plan-total"><span>Daily step goal</span><span><strong>5000 steps</strong></span></div>
+      <div class="plan-total"><span>Rest between sets</span><span>1–2 minutes</span></div>
+      <div class="plan-total"><span>Pre-workout</span><span>Walk 5 min, indoor or outdoor</span></div>
+    </div>
+    <div class="eyebrow">Warm up — before every session</div>
+    <div class="card" id="trWarmup"></div>
+    <div class="eyebrow">The week</div>
+    <div id="trDays"></div>
+    <div class="eyebrow">Cool down — after every session</div>
+    <div class="card" id="trCooldown"></div>
+    <div class="eyebrow">Guidelines</div>
+    <div class="card">
+      <h3>Getting stronger</h3>
+      <ul class="faq">
+        <li>Goal is to improve every week — week 0 weight does not matter. Start light and adjust.</li>
+        <li>Progress counts as any of: more weight (even 1 kg), more reps at the same weight, better execution, or less rest.</li>
+        <li>If a set feels too easy, increase the weight.</li>
+        <li>Execution over weight, always. Your muscles don't know the weight — only your ego does.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Execution &amp; safety</h3>
+      <ul class="faq">
+        <li>Check form on the exercise links, or the YouTube channel <strong>Scott Herman Fitness</strong> — 10 minutes while warming up.</li>
+        <li>Unsure about a movement? Film the set and send it with the weekly check-in for correction.</li>
+        <li>Always warm up: 5 min brisk walk, jog or cycle, plus 1–2 warm-up sets before heavy sets.</li>
+        <li>Always stretch after the session.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Performance</h3>
+      <ul class="faq">
+        <li>Sleep is the simplest lever — aim for 6.5 to 9 hours.</li>
+        <li>At least 750 ml water before and during the workout. Salt or electrolytes are fine.</li>
+        <li>Keep a log of every session — that is what this tab is for.</li>
+        <li>Do the exercises at a relaxed pace. Don't rush.</li>
+        <li>Send daily updates with your step count. Check in every Sunday.</li>
+      </ul>
+    </div>
+  </section>
+
   <!-- ============ REPORT ============ -->
   <section class="pane" id="pane-report">
     <div class="card">
@@ -391,6 +473,17 @@ table.hist tr:last-child td{border-bottom:none}
       <p class="sub" id="chartEmpty" style="text-align:center; padding:20px 0">Save your first weekly check-in to start the trend.</p>
     </div>
     <div class="card">
+      <h3>Training — last 4 weeks</h3>
+      <p class="sub" id="trainSummary"></p>
+      <div class="dots" id="trainDots"></div>
+      <div class="legend">
+        <span><i style="background:var(--accent)"></i>Session done</span>
+        <span><i style="background:var(--accent-soft)"></i>Rest day</span>
+        <span><i style="background:var(--bad-soft)"></i>Missed</span>
+        <span><i style="background:var(--surface2); border:1px solid var(--line)"></i>Upcoming</span>
+      </div>
+    </div>
+    <div class="card">
       <h3>Measurement history</h3>
       <div class="table-wrap">
         <table class="hist" id="histTable">
@@ -416,6 +509,7 @@ table.hist tr:last-child td{border-bottom:none}
       <button data-pane="today" class="on"><span class="ic">☀</span>Today</button>
       <button data-pane="swap"><span class="ic">⇄</span>Swap</button>
       <button data-pane="plan"><span class="ic">▤</span>Plan</button>
+      <button data-pane="train"><span class="ic">✚</span>Train</button>
       <button data-pane="report"><span class="ic">✉</span>Report</button>
       <button data-pane="progress"><span class="ic">↗</span>Progress</button>
     </div>
@@ -517,6 +611,49 @@ const SUBS = {
   ['Lychee',150],['Plum',170],['Dates (fresh)',30],['Tamarind (pulp)',30],['Amla (gooseberry)',350]]
 };
 
+/* ---------------- Workout: SHANUVER Level 1.0, bodyweight × 4 weeks ----------------
+   Exercise entries are [name, prescription, sets, video link].                      */
+const WORKOUT = {
+ title:'Level 1.0 · Bodyweight', weeks:4, stepGoal:5000,
+ warmup:[
+  ['General warm up','Walk or cycle at slow pace — 10 min',''],
+  ['Shoulder mobility drill','2 minutes','https://youtu.be/HiCnRk1_z5Q'],
+  ['Hip mobility drill','2 minutes','https://youtu.be/nLuvQCTPrcY']],
+ days:[
+  {n:1, type:'train', ex:[
+    ['Wall Push Ups','12, 10, 10 reps',3,'https://youtu.be/YB0egDzsu18'],
+    ['Incline Mountain Climber','12, 10, 10 reps',3,'https://youtu.be/_ZMB92X4zgM'],
+    ['Incline Plank','30 seconds each',3,'https://youtu.be/mf6x119YTOM'],
+    ['Chair Squats','12, 10, 10 reps',3,'https://youtu.be/LrNhnsWPtgQ'],
+    ['Beginner Jumping Jacks','30 each',3,'https://youtu.be/Bqy1xIXX2nc']]},
+  {n:2, type:'train', ex:[
+    ['Reverse Lunge with Rotation','12, 10, 10 reps',3,'https://youtu.be/5IYEoYBnjiI'],
+    ['Ground Superman','12, 10, 10 reps',3,'https://youtu.be/BONEL9y0bcI'],
+    ['Hip Raise with Backpack','12, 10, 10 reps',3,'https://youtu.be/wh_ZLb5Tynk'],
+    ['Standing Butt Kicks','12, 10, 10 reps',3,'https://youtu.be/oMW59TKZvaI'],
+    ['Bent Over Row with Backpack','12, 10, 10 reps',3,'https://youtu.be/8-7D1GgT28M']]},
+  {n:3, type:'rest'},
+  {n:4, type:'train', ex:[
+    ['Beginner High Knees','12, 10, 10 reps',3,'https://youtu.be/Xh8JEoYjYhg'],
+    ['Twisted Warrior','12, 10, 10 reps',3,'https://youtu.be/5hgvZuQ_0dc'],
+    ['Bear Walk','12, 10, 10 reps',3,'https://youtu.be/t8XLor7unqU'],
+    ['Donkey Kick Backs','12, 10, 10 reps',3,'https://youtu.be/SJ1Xuz9D-ZQ'],
+    ['Sumo Squats','12, 10, 10 reps',3,'https://youtu.be/kjlfpqXnyL8']]},
+  {n:5, type:'rest'},
+  {n:6, type:'circuit', rounds:3, note:'3 rounds in total · 10 reps each · 60 seconds rest between rounds', ex:[
+    ['Floor Crunches','10 reps',3,'https://youtu.be/Xyd_fa5zoEU'],
+    ['Beginner Lunges','10 reps',3,'https://youtu.be/QOVaHwm-Q6U'],
+    ['Beginner Sprawls','10 reps',3,'https://youtu.be/_UAcX_oRJ_k']]},
+  {n:7, type:'rest'}],
+ cooldown:[
+  ['Standing side stretch — right','20 s'],['Standing side stretch — left','20 s'],
+  ['Shoulder stretch — right','20 s'],['Shoulder stretch — left','20 s'],
+  ['Toes reach','20 s'],['Hip stretch — right','20 s'],['Hip stretch — left','20 s'],
+  ['Glute stretch — right','30 s'],['Glute stretch — left','30 s']],
+ cooldownLink:'https://www.instagram.com/p/CFGqcTxph18/'
+};
+const REST_NOTE = 'Active rest day — complete your step count.';
+
 /* ----- Protein density: grams of protein per 100 kcal of the food -----
    Keyed by food name, because this ratio belongs to the food itself and is
    what makes a swap across protein types honest: 100 kcal of chicken carries
@@ -579,8 +716,30 @@ function dayNum(dateStr){
   return Math.round((b-a)/86400000)+1;
 }
 function curWeekNum(){ return Math.max(1, Math.ceil(dayNum(todayStr())/7)); }
-function blankDay(){ return {workout:'', meals:[{},{},{},{},{}], water:'', energy:0, sleep:'', steps:''}; }
-function getDay(d){ if(!state.days[d]) state.days[d]=blankDay(); return state.days[d]; }
+function blankDay(){
+  return {workout:'', meals:[{},{},{},{},{}], water:'', energy:0, sleep:'', steps:'',
+          sets:{}, exNote:{}, warmup:false, cooldown:false};
+}
+function getDay(d){
+  if(!state.days[d]) state.days[d]=blankDay();
+  const day=state.days[d];
+  if(!day.sets) day.sets={};          // days saved before workout logging existed
+  if(!day.exNote) day.exNote={};
+  return day;
+}
+/* Program repeats on a 7-day cycle anchored to the start date in Settings. */
+function progDay(dateStr){ return WORKOUT.days[(((dayNum(dateStr)-1)%7)+7)%7]; }
+function sessionStats(dateStr){
+  const pd=progDay(dateStr), day=getDay(dateStr);
+  if(pd.type==='rest') return {pd, done:0, total:0, exDone:0};
+  let done=0, exDone=0;
+  pd.ex.forEach((e,i)=>{
+    const s=day.sets[i]||[];
+    const n=s.filter(Boolean).length;
+    done+=n; if(n>=e[2]) exDone++;
+  });
+  return {pd, done, total:pd.ex.reduce((a,e)=>a+e[2],0), exDone};
+}
 
 /* ---------------- Elements / helpers ---------------- */
 const $=id=>document.getElementById(id);
@@ -606,6 +765,7 @@ document.querySelectorAll('nav.tabs button').forEach(b=>{
     document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.toggle('on',x===b));
     document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
     $('pane-'+b.dataset.pane).classList.add('on');
+    if(b.dataset.pane==='train') markTrainToday();
     if(b.dataset.pane==='report') renderReports();
     if(b.dataset.pane==='progress') renderProgress();
     window.scrollTo({top:0});
@@ -649,11 +809,79 @@ function buildMealCards(){
     });
   });
 }
+function renderWorkout(){
+  const day=getDay(curDate);
+  const {pd,done,total,exDone}=sessionStats(curDate);
+  const host=$('woSession');
+  $('woTitle').textContent = 'Workout · Day '+pd.n+'/7';
+  if(pd.type==='rest'){
+    $('woSub').textContent=REST_NOTE;
+    $('woProg').textContent='';
+    host.innerHTML='';
+    return;
+  }
+  $('woSub').textContent = pd.type==='circuit' ? pd.note : 'Rest 1–2 minutes between sets.';
+  $('woProg').textContent = done+'/'+total+' sets';
+  const label = pd.type==='circuit' ? 'Round' : 'Set';
+  host.innerHTML = pd.ex.map((e,i)=>{
+    const s=day.sets[i]||[];
+    const btns=Array.from({length:e[2]},(_,k)=>
+      `<button class="set-btn ${s[k]?'on':''}" data-ex="${i}" data-set="${k}"
+        aria-pressed="${!!s[k]}" aria-label="${label} ${k+1} of ${e[0]}">${k+1}</button>`).join('');
+    return `<div class="ex-row">
+      <div class="ex-top">
+        <div><div class="ex-name">${e[0]}</div><div class="ex-presc">${e[2]} × ${e[1]}</div></div>
+        ${e[3]?`<a class="ex-link" href="${e[3]}" target="_blank" rel="noopener">▶ form</a>`:''}
+      </div>
+      <div class="sets">${btns}<span class="done-n">${label.toLowerCase()}s</span></div>
+      <input type="text" class="ex-note-in" data-note="${i}" value="${(day.exNote[i]||'').replace(/"/g,'&quot;')}"
+        placeholder="Weight, reps or how it felt">
+    </div>`;
+  }).join('') + `
+    <div class="ex-row">
+      <div class="chips" style="margin-top:0">
+        <button class="chip ${day.warmup?'on':''}" id="woWarm">Warm-up done</button>
+        <button class="chip ${day.cooldown?'on':''}" id="woCool">Cool-down done</button>
+      </div>
+    </div>`;
+}
+$('woSession').addEventListener('click',e=>{
+  const day=getDay(curDate);
+  const b=e.target.closest('.set-btn');
+  if(b){
+    const i=+b.dataset.ex, k=+b.dataset.set;
+    const s=day.sets[i]||(day.sets[i]=[]);
+    s[k]=!s[k];
+    // update in place — a full re-render here would drop focus from a note being typed
+    b.classList.toggle('on', !!s[k]);
+    b.setAttribute('aria-pressed', String(!!s[k]));
+    const st=sessionStats(curDate);
+    $('woProg').textContent = st.done+'/'+st.total+' sets';
+    // finishing the last set marks the session done, but never un-marks a manual choice
+    if(st.total && st.done===st.total && !day.workout){
+      day.workout='Completed';
+      document.querySelectorAll('#workoutChips .chip').forEach(c=>
+        c.classList.toggle('on', c.dataset.v===day.workout));
+    }
+    save(); updateStats(); return;
+  }
+  const w=e.target.closest('#woWarm'), c=e.target.closest('#woCool');
+  if(w||c){
+    const on = w ? (day.warmup=!day.warmup) : (day.cooldown=!day.cooldown);
+    (w||c).classList.toggle('on', on);
+    save();
+  }
+});
+$('woSession').addEventListener('input',e=>{
+  const n=e.target.closest('[data-note]'); if(!n) return;
+  getDay(curDate).exNote[+n.dataset.note]=n.value; save();
+});
 function renderToday(){
   const day=getDay(curDate);
   $('dayChip').textContent='Day '+dayNum(curDate)+' · Wk '+Math.max(1,Math.ceil(dayNum(curDate)/7));
   document.querySelectorAll('#workoutChips .chip').forEach(c=>
     c.classList.toggle('on', c.dataset.v===day.workout));
+  renderWorkout();
   MEALS.forEach((m,mi)=>{
     const sel=day.meals[mi]||{};
     document.querySelectorAll(`#mealCards .chip[data-m="${mi}"]`).forEach(c=>
@@ -704,7 +932,8 @@ function updateStats(){
   let streak=0, d=new Date(curDate+'T00:00');
   for(;;){
     const ds=todayStr(d), rec=state.days[ds];
-    const logged = rec && (rec.workout || rec.meals.some(m=>m.opt!==undefined));
+    const logged = rec && (rec.workout || rec.meals.some(m=>m.opt!==undefined)
+                   || Object.values(rec.sets||{}).some(s=>s.some(Boolean)));
     if(!logged) break;
     streak++; d.setDate(d.getDate()-1);
   }
@@ -842,6 +1071,40 @@ xpCalc();
   });
 })();
 
+/* ---------------- Train pane ---------------- */
+(function(){
+  const link=(u,t)=>u?`<a class="ex-link" href="${u}" target="_blank" rel="noopener">${t}</a>`:'';
+  $('trSub').textContent='Bodyweight programme, 4 weeks. The same 7-day cycle repeats, starting from Day 1 of your plan.';
+  $('trWarmup').innerHTML = WORKOUT.warmup.map(w=>
+    `<div class="ex-row"><div class="ex-top">
+      <div><div class="ex-name">${w[0]}</div><div class="ex-presc">${w[1]}</div></div>
+      ${link(w[2],'▶ watch')}</div></div>`).join('');
+  $('trDays').innerHTML = WORKOUT.days.map(d=>{
+    const head=`<h3>Day ${d.n} · ${d.type==='rest'?'Active rest':d.type==='circuit'?'Circuit':'Workout'}<span class="today-badge" hidden>Today</span></h3>`;
+    if(d.type==='rest')
+      return `<div class="card" id="trDay${d.n}">${head}<p class="sub">${REST_NOTE}</p></div>`;
+    return `<div class="card" id="trDay${d.n}">${head}
+      ${d.note?`<p class="sub">${d.note}</p>`:''}
+      ${d.ex.map(e=>`<div class="ex-row"><div class="ex-top">
+        <div><div class="ex-name">${e[0]}</div><div class="ex-presc">${e[2]} × ${e[1]}</div></div>
+        ${link(e[3],'▶ form')}</div></div>`).join('')}
+    </div>`;
+  }).join('');
+  $('trCooldown').innerHTML =
+    WORKOUT.cooldown.map(c=>`<div class="ex-row"><div class="ex-top">
+      <div class="ex-name">${c[0]}</div><div class="ex-presc">${c[1]}</div></div></div>`).join('')
+    + `<div class="ex-row"><div class="ex-top">${link(WORKOUT.cooldownLink,'▶ full cool-down')}</div></div>`;
+})();
+/* Which card is "today" depends on the start date, so refresh it rather than bake it in. */
+function markTrainToday(){
+  const n=progDay(todayStr()).n;
+  WORKOUT.days.forEach(d=>{
+    const card=$('trDay'+d.n); if(!card) return;
+    card.classList.toggle('is-today', d.n===n);
+    card.querySelector('.today-badge').hidden = d.n!==n;
+  });
+}
+
 /* ---------------- Reports ---------------- */
 $('repDate').value=todayStr();
 $('repDate').addEventListener('change',renderDailyReport);
@@ -856,12 +1119,23 @@ function dailyText(){
   const day=state.days[d]||blankDay();
   const L=[];
   L.push('Day: '+dayNum(d));
-  L.push('Workout: '+(day.workout||'-'));
+  const {pd,done,total}=sessionStats(d);
+  if(pd.type==='rest'){
+    L.push('Workout: Day '+pd.n+'/7 — active rest'+(day.workout?' ('+day.workout+')':''));
+  } else {
+    const status = day.workout || (done ? 'In progress' : '-');
+    L.push('Workout: Day '+pd.n+'/7 — '+status+(done?' ('+done+'/'+total+' sets)':''));
+    pd.ex.forEach((e,i)=>{
+      const n=(day.sets[i]||[]).filter(Boolean).length;
+      const note=(day.exNote[i]||'').trim();
+      L.push('  - '+e[0]+' '+n+'/'+e[2]+(note?' ('+note+')':''));
+    });
+  }
   day.meals.forEach((sel,mi)=>L.push('Meal '+(mi+1)+': '+mealText(sel,mi)));
   L.push('Water intake: '+(day.water?day.water+' Litres':'-'));
   L.push('Energy: '+(day.energy?day.energy+'/10':'-'));
   L.push('Sleep: '+(day.sleep?day.sleep+' hours':'-'));
-  L.push('Steps: '+(day.steps||'-'));
+  L.push('Steps: '+(day.steps||'-')+' (goal '+WORKOUT.stepGoal+')');
   return L.join('\n');
 }
 function renderDailyReport(){ $('dailyReport').textContent=dailyText(); }
@@ -1021,6 +1295,32 @@ function renderProgress(){
   });
   $('histEmpty').style.display=entries.length?'none':'block';
   drawChart(withW, sw);
+  renderTrainDots();
+}
+function renderTrainDots(){
+  const today=todayStr(), host=$('trainDots');
+  let sessions=0, doneCount=0, html='';
+  for(let i=27;i>=0;i--){
+    const d=new Date(today+'T00:00'); d.setDate(d.getDate()-i);
+    const ds=todayStr(d);
+    if(dayNum(ds)<1){ html+='<div class="dot" title="Before start"></div>'; continue; }
+    const {pd,done,total}=sessionStats(ds);
+    const rec=state.days[ds];
+    let cls='', tip='Day '+pd.n;
+    if(pd.type==='rest'){ cls='rest'; tip+=' · rest'; }
+    else{
+      sessions++;
+      const complete = (total && done===total) || (rec && rec.workout==='Completed');
+      if(complete){ cls='done'; doneCount++; tip+=' · done'; }
+      else if(ds<today){ cls='miss'; tip+=' · '+done+'/'+total+' sets'; }
+      else tip+=' · today';
+    }
+    html+=`<div class="dot ${cls}" title="${ds} · ${tip}"></div>`;
+  }
+  host.innerHTML=html;
+  $('trainSummary').textContent = sessions
+    ? doneCount+' of '+sessions+' sessions completed. One row per week, today is the last square.'
+    : 'No sessions scheduled yet.';
 }
 function drawChart(points, startWeight){
   const svg=$('wtChart'); const empty=$('chartEmpty');
@@ -1123,7 +1423,7 @@ $('btnSaveSettings').addEventListener('click',()=>{
   s.startWaist=$('setWa').value; s.startHip=$('setH').value;
   s.phone=$('setPhone').value.trim();
   save(); $('settingsModal').classList.remove('on');
-  renderToday(); renderReports(); toast('Settings saved');
+  renderToday(); renderReports(); markTrainToday(); toast('Settings saved');
 });
 
 /* ---------------- Init ---------------- */
@@ -1131,4 +1431,5 @@ buildMealCards();
 buildWeeklyInputs();
 renderToday();
 renderReports();
+markTrainToday();
 </script>
