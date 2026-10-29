@@ -248,7 +248,7 @@ table.hist tr:last-child td{border-bottom:none}
   <!-- ============ TODAY ============ -->
   <section class="pane" id="pane-today">
     <div class="stat-row">
-      <div class="stat"><div class="v" id="stKcal">–</div><div class="k">kcal logged</div></div>
+      <div class="stat"><div class="v" id="stKcal">–</div><div class="k" id="stKcalK">kcal logged</div></div>
       <div class="stat"><div class="v" id="stMeals">0/5</div><div class="k">meals</div></div>
       <div class="stat"><div class="v" id="stStreak">0</div><div class="k">day streak</div></div>
     </div>
@@ -277,8 +277,15 @@ table.hist tr:last-child td{border-bottom:none}
     <div id="mealCards"></div>
 
     <div class="card">
+      <h3>Carb add-on</h3>
+      <p class="sub">One measured cooked-carb option a day, about 100 kcal, on top of the five meals.</p>
+      <div class="chips" id="carbChips"></div>
+      <div class="opt-detail" id="carbDetail" hidden></div>
+    </div>
+
+    <div class="card">
       <h3>Daily numbers</h3>
-      <label class="f">Water intake (litres) — minimum 2 L</label>
+      <label class="f" id="lblWater">Water intake (litres)</label>
       <input type="number" id="inWater" min="0" max="10" step="0.25" inputmode="decimal" placeholder="e.g. 2.5">
       <label class="f">Energy (1–10)</label>
       <div class="slider-row">
@@ -287,12 +294,12 @@ table.hist tr:last-child td{border-bottom:none}
       </div>
       <div class="grid2">
         <div>
-          <label class="f">Sleep (hours)</label>
+          <label class="f" id="lblSleep">Sleep (hours)</label>
           <input type="number" id="inSleep" min="0" max="16" step="0.5" inputmode="decimal" placeholder="e.g. 7">
         </div>
         <div>
-          <label class="f">Steps — goal 5000</label>
-          <input type="number" id="inSteps" min="0" step="100" inputmode="numeric" placeholder="e.g. 5000">
+          <label class="f" id="lblSteps">Steps</label>
+          <input type="number" id="inSteps" min="0" step="100" inputmode="numeric" placeholder="e.g. 8000">
         </div>
       </div>
     </div>
@@ -325,7 +332,7 @@ table.hist tr:last-child td{border-bottom:none}
     </div>
     <div class="card">
       <h3>Cross-protein swap</h3>
-      <p class="sub">Swap between animal, dairy and plant proteins. Matching <strong>protein</strong> protects your 85 g daily target — calories shift a little, and the change is shown so you can adjust elsewhere.</p>
+      <p class="sub" id="xpSub">Swap between animal, dairy and plant proteins. Matching <strong>protein</strong> protects your daily target — calories shift a little, and the change is shown so you can adjust elsewhere.</p>
       <label class="f">Match on</label>
       <div class="chips" id="xpMode">
         <button class="chip on" data-v="protein">Same protein</button>
@@ -360,12 +367,21 @@ table.hist tr:last-child td{border-bottom:none}
   <section class="pane" id="pane-plan">
     <div class="card">
       <h3>Daily targets</h3>
+      <p class="sub">Set by your coach. Change them in Settings whenever the weekly plan moves.</p>
       <div class="stat-row" style="margin:10px 0 0">
-        <div class="stat"><div class="v">85 g</div><div class="k">protein</div></div>
-        <div class="stat"><div class="v">163 g</div><div class="k">carbs</div></div>
-        <div class="stat"><div class="v">50 g</div><div class="k">fats</div></div>
+        <div class="stat"><div class="v" id="tgP">–</div><div class="k">protein</div></div>
+        <div class="stat"><div class="v" id="tgC">–</div><div class="k">carbs</div></div>
+        <div class="stat"><div class="v" id="tgF">–</div><div class="k">fats</div></div>
       </div>
-      <div class="plan-total"><span>Total target</span><span><strong>1450 kcal</strong> · BMR 1790</span></div>
+      <div class="plan-total"><span>Total target</span><span><strong id="tgKcal">–</strong> · BMR 1790</span></div>
+      <div class="plan-total"><span>Steps</span><span id="tgSteps">–</span></div>
+      <div class="plan-total"><span>Water · sleep</span><span id="tgWaterSleep">–</span></div>
+      <div class="notice" id="tgMismatch" style="margin:12px 0 0" hidden></div>
+    </div>
+    <div class="card">
+      <h3>Carb add-on — one a day</h3>
+      <p class="sub">Added at week 9 to lift the target by about 100 kcal, mainly from carbohydrate, for energy, recovery and training.</p>
+      <div id="carbPlanList"></div>
     </div>
     <div id="planCards"></div>
     <div class="card">
@@ -387,7 +403,7 @@ table.hist tr:last-child td{border-bottom:none}
     <div class="card">
       <h3 id="trTitle">Level 1.0 · Bodyweight</h3>
       <p class="sub" id="trSub"></p>
-      <div class="plan-total"><span>Daily step goal</span><span><strong>5000 steps</strong></span></div>
+      <div class="plan-total"><span>Daily step goal</span><span><strong id="trSteps">–</strong></span></div>
       <div class="plan-total"><span>Rest between sets</span><span>1–2 minutes</span></div>
       <div class="plan-total"><span>Pre-workout</span><span>Walk 5 min, indoor or outdoor</span></div>
     </div>
@@ -533,6 +549,20 @@ table.hist tr:last-child td{border-bottom:none}
       <div><label class="f">Waist (cm)</label><input type="number" id="setWa" step="0.1" inputmode="decimal"></div>
       <div><label class="f">Hip (cm)</label><input type="number" id="setH" step="0.1" inputmode="decimal"></div>
     </div>
+    <div class="eyebrow" style="margin-top:14px">Daily targets</div>
+    <p class="sub" style="margin-bottom:4px">Update these when the coach revises your plan — nothing else needs changing.</p>
+    <div class="grid2">
+      <div><label class="f">Calories (kcal)</label><input type="number" id="setKcal" step="10" inputmode="numeric"></div>
+      <div><label class="f">Water (litres)</label><input type="number" id="setWater" step="0.25" inputmode="decimal"></div>
+      <div><label class="f">Protein (g)</label><input type="number" id="setP" step="1" inputmode="numeric"></div>
+      <div><label class="f">Carbs (g)</label><input type="number" id="setC2" step="1" inputmode="numeric"></div>
+      <div><label class="f">Fats (g)</label><input type="number" id="setF" step="1" inputmode="numeric"></div>
+      <div></div>
+      <div><label class="f">Steps goal</label><input type="number" id="setSteps" step="500" inputmode="numeric"></div>
+      <div><label class="f">Steps stretch</label><input type="number" id="setStepsMax" step="500" inputmode="numeric"></div>
+      <div><label class="f">Sleep from (h)</label><input type="number" id="setSleep" step="0.5" inputmode="decimal"></div>
+      <div><label class="f">Sleep to (h)</label><input type="number" id="setSleepMax" step="0.5" inputmode="decimal"></div>
+    </div>
     <label class="f">Coach WhatsApp number (optional, with country code e.g. 971501234567)</label>
     <input type="text" id="setPhone" inputmode="tel" placeholder="Leave empty to just pick a chat">
     <button class="btn block" id="btnSaveSettings" style="margin-top:16px">Save</button>
@@ -617,7 +647,7 @@ const SUBS = {
 /* ---------------- Workout: SHANUVER Level 1.0, bodyweight × 4 weeks ----------------
    Exercise entries are [name, prescription, sets, video link].                      */
 const WORKOUT = {
- title:'Level 1.0 · Bodyweight', weeks:4, stepGoal:5000,
+ title:'Level 1.0 · Bodyweight', weeks:4,
  warmup:[
   ['General warm up','Walk or cycle at slow pace — 10 min',''],
   ['Shoulder mobility drill','2 minutes','https://youtu.be/HiCnRk1_z5Q'],
@@ -656,6 +686,19 @@ const WORKOUT = {
  cooldownLink:'https://www.instagram.com/p/CFGqcTxph18/'
 };
 const REST_NOTE = 'Active rest day — complete your step count.';
+
+/* Week 9: one measured cooked-carb option a day, roughly 100 kcal each,
+   on top of the five planned meals. */
+const CARB_ADDONS = [
+ ['Cooked rice','75–80 g, with lemon, herbs or spices'],
+ ['Potato','110–115 g boiled or air-fried, with seasoning'],
+ ['Sweet potato','110–115 g boiled or roasted'],
+ ['Cooked corn','100–105 g, with lemon and spices'],
+ ['Cooked pasta','65 g, light tomato-based seasoning'],
+ ['Cooked quinoa','85 g, with seasoning'],
+ ['Oil-free chapati','1 small, about 35–40 g cooked']
+];
+const CARB_KCAL = 100;
 
 /* ----- Protein density: grams of protein per 100 kcal of the food -----
    Keyed by food name, because this ratio belongs to the food itself and is
@@ -702,16 +745,26 @@ const MEASURES = [
 ];
 
 /* ---------------- State ---------------- */
+/* Coach targets move most weeks, so they live in settings rather than in the
+   code. These defaults are the week 9 revision; editing them in Settings is
+   all a later change needs. */
+const DEFAULT_SETTINGS = {
+  startDate:todayStr(), startWeight:86.05,
+  startNeck:'', startChest:'', startWaist:'', startHip:'', phone:'',
+  kcalTarget:1650, protein:85, carbs:163, fats:50,
+  stepGoal:8000, stepGoalMax:10000, waterGoal:2, sleepGoal:7, sleepGoalMax:8
+};
 const KEY='shanufit-v1';
 let state = load();
 function load(){
   try{
     const s = JSON.parse(localStorage.getItem(KEY));
-    if(s && s.settings) return s;
+    // fill in any target a save from an earlier version never had
+    if(s && s.settings){ s.settings = Object.assign({}, DEFAULT_SETTINGS, s.settings); return s; }
   }catch(e){}
-  return {settings:{startDate:todayStr(), startWeight:86, startNeck:'', startChest:'', startWaist:'', startHip:'', phone:''},
-          days:{}, weeks:{}};
+  return {settings:Object.assign({}, DEFAULT_SETTINGS), days:{}, weeks:{}};
 }
+const T = () => state.settings;   // targets, read straight from settings
 function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
 function todayStr(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function dayNum(dateStr){
@@ -721,7 +774,7 @@ function dayNum(dateStr){
 function curWeekNum(){ return Math.max(1, Math.ceil(dayNum(todayStr())/7)); }
 function blankDay(){
   return {workout:'', meals:[{},{},{},{},{}], water:'', energy:0, sleep:'', steps:'',
-          sets:{}, exNote:{}, warmup:false, cooldown:false};
+          carb:'', sets:{}, exNote:{}, warmup:false, cooldown:false};
 }
 function getDay(d){
   if(!state.days[d]) state.days[d]=blankDay();
@@ -879,9 +932,63 @@ $('woSession').addEventListener('input',e=>{
   const n=e.target.closest('[data-note]'); if(!n) return;
   getDay(curDate).exNote[+n.dataset.note]=n.value; save();
 });
+/* A goal may be a single number or a range, depending on what the coach set. */
+function goalText(lo,hi,unit){
+  const a=Number(lo)||0, b=Number(hi)||0;
+  return (b>a ? a.toLocaleString()+'–'+b.toLocaleString() : a.toLocaleString())+(unit||'');
+}
+function renderTargets(){
+  const s=T();
+  $('tgP').textContent=s.protein+' g'; $('tgC').textContent=s.carbs+' g'; $('tgF').textContent=s.fats+' g';
+  $('tgKcal').textContent=s.kcalTarget+' kcal';
+  $('tgSteps').textContent=goalText(s.stepGoal,s.stepGoalMax)+' a day';
+  $('tgWaterSleep').textContent=s.waterGoal+' L · '+goalText(s.sleepGoal,s.sleepGoalMax)+' h';
+  // the macro split and the calorie target come from the coach separately, so
+  // say so plainly when they no longer describe the same day
+  const macroKcal=Math.round(s.protein*4+s.carbs*4+s.fats*9);
+  const gap=s.kcalTarget-macroKcal;
+  const box=$('tgMismatch');
+  if(Math.abs(gap)>50){
+    box.hidden=false;
+    box.textContent='The macros above add up to '+macroKcal+' kcal, '+Math.abs(gap)+
+      (gap>0?' short of':' over')+' the '+s.kcalTarget+' kcal target. Ask your coach for the revised split and update it in Settings.';
+  } else box.hidden=true;
+  $('lblWater').textContent='Water intake (litres) — goal '+s.waterGoal+' L';
+  $('lblSleep').textContent='Sleep (hours) — goal '+goalText(s.sleepGoal,s.sleepGoalMax);
+  $('lblSteps').textContent='Steps — goal '+goalText(s.stepGoal,s.stepGoalMax);
+  $('trSteps').textContent=goalText(s.stepGoal,s.stepGoalMax)+' steps';
+  $('xpSub').innerHTML='Swap between animal, dairy and plant proteins. Matching <strong>protein</strong> protects your '+
+    s.protein+' g daily target — calories shift a little, and the change is shown so you can adjust elsewhere.';
+  $('carbPlanList').innerHTML=CARB_ADDONS.map(c=>
+    `<div class="ex-row"><div class="ex-top">
+      <div><div class="ex-name">${c[0]}</div><div class="ex-presc">${c[1]}</div></div></div></div>`).join('');
+}
+function buildCarbChips(){
+  $('carbChips').innerHTML = CARB_ADDONS.map((c,i)=>
+    `<button class="chip" data-carb="${i}">${c[0]}</button>`).join('')
+    + '<button class="chip" data-carb="none">None today</button>';
+  $('carbChips').addEventListener('click',e=>{
+    const b=e.target.closest('.chip'); if(!b) return;
+    const day=getDay(curDate), v=b.dataset.carb;
+    day.carb = day.carb===v ? '' : v;
+    save(); renderCarb(); updateStats();
+  });
+}
+function renderCarb(){
+  const day=getDay(curDate), sel=day.carb;
+  document.querySelectorAll('#carbChips .chip').forEach(c=>
+    c.classList.toggle('on', c.dataset.carb===sel && sel!==''));
+  const det=$('carbDetail');
+  if(sel!=='' && sel!==undefined && sel!=='none'){
+    const c=CARB_ADDONS[+sel];
+    det.hidden=false;
+    det.innerHTML=`${c[0]} — ${c[1]}<div class="macro-line">about ${CARB_KCAL} kcal</div>`;
+  } else det.hidden=true;
+}
 function renderToday(){
   const day=getDay(curDate);
   $('dayChip').textContent='Day '+dayNum(curDate)+' · Wk '+Math.max(1,Math.ceil(dayNum(curDate)/7));
+  renderCarb();
   document.querySelectorAll('#workoutChips .chip').forEach(c=>
     c.classList.toggle('on', c.dataset.v===day.workout));
   renderWorkout();
@@ -929,7 +1036,9 @@ function updateStats(){
       if(sel.opt!=='custom') kcal+=MEALS[mi].options[+sel.opt].kcal;
     }
   });
+  if(day.carb!=='' && day.carb!==undefined) kcal+=CARB_KCAL;
   $('stKcal').textContent = kcal? kcal : '–';
+  $('stKcalK').textContent = 'of '+T().kcalTarget+' kcal';
   $('stMeals').textContent = done+'/5';
   // streak: consecutive days ending at log date with any meal or workout logged
   let streak=0, d=new Date(curDate+'T00:00');
@@ -1040,7 +1149,7 @@ function xpCalc(){
   } else {
     d.textContent = dP===0
       ? 'Same calories, and the protein matches too.'
-      : (dP<0 ? `Same calories but ${dP} g protein — the day falls short of 85 g unless you make it up elsewhere.`
+      : (dP<0 ? `Same calories but ${dP} g protein — the day falls short of ${T().protein} g unless you make it up elsewhere.`
               : `Same calories and +${dP} g protein — a straight upgrade.`);
   }
   box.hidden=false;
@@ -1135,10 +1244,13 @@ function dailyText(){
     });
   }
   day.meals.forEach((sel,mi)=>L.push('Meal '+(mi+1)+': '+mealText(sel,mi)));
-  L.push('Water intake: '+(day.water?day.water+' Litres':'-'));
+  const s=T();
+  L.push('Carb add-on: '+(day.carb===''||day.carb===undefined ? '-'
+    : day.carb==='none' ? 'None' : CARB_ADDONS[+day.carb][0]+' ('+CARB_ADDONS[+day.carb][1]+')'));
+  L.push('Water intake: '+(day.water?day.water+' Litres':'-')+' (goal '+s.waterGoal+' L)');
   L.push('Energy: '+(day.energy?day.energy+'/10':'-'));
-  L.push('Sleep: '+(day.sleep?day.sleep+' hours':'-'));
-  L.push('Steps: '+(day.steps||'-')+' (goal '+WORKOUT.stepGoal+')');
+  L.push('Sleep: '+(day.sleep?day.sleep+' hours':'-')+' (goal '+goalText(s.sleepGoal,s.sleepGoalMax)+')');
+  L.push('Steps: '+(day.steps||'-')+' (goal '+goalText(s.stepGoal,s.stepGoalMax)+')');
   return L.join('\n');
 }
 function renderDailyReport(){ $('dailyReport').textContent=dailyText(); }
@@ -1414,6 +1526,10 @@ $('btnSettings').addEventListener('click',()=>{
   $('setN').value=s.startNeck; $('setC').value=s.startChest;
   $('setWa').value=s.startWaist; $('setH').value=s.startHip;
   $('setPhone').value=s.phone||'';
+  $('setKcal').value=s.kcalTarget; $('setWater').value=s.waterGoal;
+  $('setP').value=s.protein; $('setC2').value=s.carbs; $('setF').value=s.fats;
+  $('setSteps').value=s.stepGoal; $('setStepsMax').value=s.stepGoalMax;
+  $('setSleep').value=s.sleepGoal; $('setSleepMax').value=s.sleepGoalMax;
   $('settingsModal').classList.add('on');
 });
 $('settingsModal').addEventListener('click',e=>{
@@ -1425,13 +1541,20 @@ $('btnSaveSettings').addEventListener('click',()=>{
   s.startWeight=$('setW').value; s.startNeck=$('setN').value; s.startChest=$('setC').value;
   s.startWaist=$('setWa').value; s.startHip=$('setH').value;
   s.phone=$('setPhone').value.trim();
+  const num=(id,cur)=>$(id).value===''?cur:Number($(id).value);
+  s.kcalTarget=num('setKcal',s.kcalTarget); s.waterGoal=num('setWater',s.waterGoal);
+  s.protein=num('setP',s.protein); s.carbs=num('setC2',s.carbs); s.fats=num('setF',s.fats);
+  s.stepGoal=num('setSteps',s.stepGoal); s.stepGoalMax=num('setStepsMax',s.stepGoalMax);
+  s.sleepGoal=num('setSleep',s.sleepGoal); s.sleepGoalMax=num('setSleepMax',s.sleepGoalMax);
   save(); $('settingsModal').classList.remove('on');
-  renderToday(); renderReports(); markTrainToday(); toast('Settings saved');
+  renderTargets(); renderToday(); renderReports(); markTrainToday(); toast('Settings saved');
 });
 
 /* ---------------- Init ---------------- */
 buildMealCards();
+buildCarbChips();
 buildWeeklyInputs();
+renderTargets();
 renderToday();
 renderReports();
 markTrainToday();
