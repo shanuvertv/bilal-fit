@@ -231,6 +231,9 @@ table.hist tr:last-child td{border-bottom:none}
 .dot.rest{background:var(--accent-soft); border-color:var(--accent-soft)}
 .dot.miss{background:var(--bad-soft); border-color:var(--bad-soft)}
 .legend{display:flex; gap:12px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--ink3)}
+.bar{height:8px; border-radius:999px; background:var(--surface2); overflow:hidden; margin:10px 0 4px}
+.bar > i{display:block; height:100%; background:var(--accent); border-radius:999px; transition:width .2s}
+.bar.over > i{background:var(--amber)}
 .legend span{display:flex; align-items:center; gap:5px}
 .legend i{width:12px; height:12px; border-radius:4px; display:inline-block}
 .delta-up{color:var(--bad); font-weight:700}
@@ -281,6 +284,13 @@ table.hist tr:last-child td{border-bottom:none}
       <p class="sub">One measured cooked-carb option a day, about 100 kcal, on top of the five meals.</p>
       <div class="chips" id="carbChips"></div>
       <div class="opt-detail" id="carbDetail" hidden></div>
+    </div>
+
+    <div class="card">
+      <div class="wo-head"><h3>Day total</h3><span class="wo-prog" id="gapProg"></span></div>
+      <div class="bar" id="gapBar"><i style="width:0"></i></div>
+      <p class="sub" id="gapMsg"></p>
+      <div id="gapSuggest"></div>
     </div>
 
     <div class="card">
@@ -376,6 +386,7 @@ table.hist tr:last-child td{border-bottom:none}
       <div class="plan-total"><span>Total target</span><span><strong id="tgKcal">–</strong> · BMR 1790</span></div>
       <div class="plan-total"><span>Steps</span><span id="tgSteps">–</span></div>
       <div class="plan-total"><span>Water · sleep</span><span id="tgWaterSleep">–</span></div>
+      <div class="plan-total"><span>Planned meals + add-on</span><span id="tgPlanRange">–</span></div>
       <div class="notice" id="tgMismatch" style="margin:12px 0 0" hidden></div>
     </div>
     <div class="card">
@@ -943,16 +954,23 @@ function renderTargets(){
   $('tgKcal').textContent=s.kcalTarget+' kcal';
   $('tgSteps').textContent=goalText(s.stepGoal,s.stepGoalMax)+' a day';
   $('tgWaterSleep').textContent=s.waterGoal+' L · '+goalText(s.sleepGoal,s.sleepGoalMax)+' h';
-  // the macro split and the calorie target come from the coach separately, so
-  // say so plainly when they no longer describe the same day
+  // what the prescribed meals actually come to, against what the target asks for
+  let lo=0, hi=0;
+  MEALS.forEach(m=>{ const k=m.options.map(o=>o.kcal); lo+=Math.min(...k); hi+=Math.max(...k); });
+  lo+=CARB_KCAL; hi+=CARB_KCAL;
+  $('tgPlanRange').textContent=lo+'–'+hi+' kcal';
+  // the macro split, the meal portions and the calorie target all come from the
+  // coach separately, so say plainly when they stop describing the same day
   const macroKcal=Math.round(s.protein*4+s.carbs*4+s.fats*9);
-  const gap=s.kcalTarget-macroKcal;
+  const mGap=s.kcalTarget-macroKcal, pGap=s.kcalTarget-hi;
+  const notes=[];
+  if(Math.abs(mGap)>50) notes.push('The macros above add up to '+macroKcal+' kcal, '+Math.abs(mGap)+
+    (mGap>0?' short of':' over')+' the '+s.kcalTarget+' kcal target.');
+  if(pGap>0) notes.push('Even the highest-calorie option at every meal plus the add-on reaches only '+hi+
+    ' kcal, so the written portions cannot reach '+s.kcalTarget+'. Today tops up the difference with a measured carb portion — ask your coach to confirm the larger portions.');
   const box=$('tgMismatch');
-  if(Math.abs(gap)>50){
-    box.hidden=false;
-    box.textContent='The macros above add up to '+macroKcal+' kcal, '+Math.abs(gap)+
-      (gap>0?' short of':' over')+' the '+s.kcalTarget+' kcal target. Ask your coach for the revised split and update it in Settings.';
-  } else box.hidden=true;
+  box.hidden = !notes.length;
+  box.textContent = notes.join(' ');
   $('lblWater').textContent='Water intake (litres) — goal '+s.waterGoal+' L';
   $('lblSleep').textContent='Sleep (hours) — goal '+goalText(s.sleepGoal,s.sleepGoalMax);
   $('lblSteps').textContent='Steps — goal '+goalText(s.stepGoal,s.stepGoalMax);
@@ -984,6 +1002,41 @@ function renderCarb(){
     det.hidden=false;
     det.innerHTML=`${c[0]} — ${c[1]}<div class="macro-line">about ${CARB_KCAL} kcal</div>`;
   } else det.hidden=true;
+}
+/* The five prescribed meals plus one carb add-on top out below the calorie
+   target, so the day needs a measured top-up. The coach asked for the extra
+   calories to come mainly from carbohydrate, so the suggestions are carbs,
+   scaled from the same per-100-kcal table the swap calculator uses. */
+const TOPUP = ['White rice','Sweet potato','Wheat chapati'];
+function carbPer100(name){
+  const row=(SUBS['Carbohydrates']||[]).find(r=>r[0]===name);
+  return row? row[1] : null;
+}
+function renderGap(kcal, done, custom){
+  const target=Number(T().kcalTarget)||0;
+  const gap=target-kcal;
+  const pct=target? Math.min(100, Math.round(kcal/target*100)) : 0;
+  $('gapProg').textContent = kcal ? kcal+' / '+target+' kcal' : '';
+  $('gapBar').querySelector('i').style.width=pct+'%';
+  $('gapBar').classList.toggle('over', kcal>target);
+  const msg=$('gapMsg'), sug=$('gapSuggest');
+  sug.innerHTML='';
+  if(!done){ msg.textContent='Nothing logged yet. Target '+target+' kcal.'; return; }
+  const caveat = custom ? ' Substituted meals are not counted, so the real total is higher.' : '';
+  if(custom && done===custom){ msg.textContent='All meals substituted, so there is nothing to total.'; return; }
+  if(Math.abs(gap)<=40){ msg.textContent='On target for '+target+' kcal.'+caveat; return; }
+  if(gap<0){
+    msg.textContent=Math.abs(gap)+' kcal over target.'+caveat;
+    return;
+  }
+  msg.textContent=gap+' kcal short of '+target+'.'+(custom?caveat:' Top up with a measured carb portion:');
+  if(custom) return;   // no point suggesting a top-up against an unknown total
+  sug.innerHTML=TOPUP.map(n=>{
+    const per=carbPer100(n); if(!per) return '';
+    return `<div class="ex-row"><div class="ex-top">
+      <div class="ex-name">${Math.round(gap/100*per)} g ${n.toLowerCase()}</div>
+      <div class="ex-presc">cooked</div></div></div>`;
+  }).join('');
 }
 function renderToday(){
   const day=getDay(curDate);
@@ -1036,10 +1089,13 @@ function updateStats(){
       if(sel.opt!=='custom') kcal+=MEALS[mi].options[+sel.opt].kcal;
     }
   });
-  if(day.carb!=='' && day.carb!==undefined) kcal+=CARB_KCAL;
+  let custom=0;
+  day.meals.forEach(sel=>{ if(sel.opt==='custom') custom++; });
+  if(day.carb!=='' && day.carb!==undefined && day.carb!=='none') kcal+=CARB_KCAL;
   $('stKcal').textContent = kcal? kcal : '–';
   $('stKcalK').textContent = 'of '+T().kcalTarget+' kcal';
   $('stMeals').textContent = done+'/5';
+  renderGap(kcal, done, custom);
   // streak: consecutive days ending at log date with any meal or workout logged
   let streak=0, d=new Date(curDate+'T00:00');
   for(;;){
